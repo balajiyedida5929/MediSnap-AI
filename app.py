@@ -29,7 +29,11 @@ question = st.text_input(
 )
 
 if uploaded_file:
-    st.image(uploaded_file, caption="Uploaded Medicine", use_container_width=True)
+    st.image(
+        uploaded_file,
+        caption="Uploaded Medicine",
+        use_container_width=True
+    )
 
     if st.button("🔍 Analyze Medicine"):
         image_bytes = uploaded_file.getvalue()
@@ -65,13 +69,11 @@ User's question:
                     "Please upload a clearer image showing the medicine name."
                 )
 
-        except Exception:
+        except Exception as e:
             st.error(
                 "❌ Something went wrong while analyzing the image."
             )
-            st.info(
-                "Please try again with a clearer medicine image."
-            )
+            st.exception(e)
 
         st.warning(
             "⚠️ This information is for general educational purposes. "
