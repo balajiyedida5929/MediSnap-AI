@@ -4,32 +4,43 @@ from google import genai
 from google.genai import types
 from prompts import SYSTEM_PROMPT
 
+# Page configuration
 st.set_page_config(
     page_title="MediSnap AI",
     page_icon="💊",
     layout="centered"
 )
 
-client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+# Gemini API configuration
+client = genai.Client(
+    api_key=st.secrets["GEMINI_API_KEY"]
+)
 
+# Application title
 st.title("💊 MediSnap AI")
-st.write("Upload a medicine image and get easy-to-understand information.")
+st.write(
+    "Upload a medicine image and get easy-to-understand information."
+)
 
+# Language selection
 language = st.selectbox(
     "Select your language",
     ["English", "Telugu", "Hindi", "Tamil", "Kannada", "Malayalam"]
 )
 
+# Medicine image upload
 uploaded_file = st.file_uploader(
     "Upload a medicine image",
     type=["jpg", "jpeg", "png"]
 )
 
+# Optional question
 question = st.text_input(
     "Ask something about the medicine (optional)"
 )
 
 if uploaded_file:
+
     st.image(
         uploaded_file,
         caption="Uploaded Medicine",
@@ -37,6 +48,7 @@ if uploaded_file:
     )
 
     if st.button("🔍 Analyze Medicine"):
+
         image_bytes = uploaded_file.getvalue()
 
         prompt = f"""
@@ -46,10 +58,19 @@ The user's selected language is: {language}
 
 User's question:
 {question if question else "Identify this medicine and explain its common uses and important safety information."}
+
+Important:
+- Explain the medicine in simple language.
+- Mention common uses and important precautions.
+- Do not guess the medicine identity if the image is unclear.
+- Explain that the information is educational, not a medical prescription.
+- Respond in the selected language.
 """
 
         try:
+
             with st.spinner("🔍 Analyzing medicine..."):
+
                 response = client.models.generate_content(
                     model="gemini-3.8-flash",
                     contents=[
@@ -62,21 +83,29 @@ User's question:
                 )
 
             if response.text:
+
+                st.success("✅ Analysis completed!")
+
                 st.subheader("💊 Medicine Information")
+
                 st.write(response.text)
+
             else:
+
                 st.warning(
                     "⚠️ I couldn't identify the medicine from this image. "
                     "Please upload a clearer image showing the medicine name."
                 )
 
         except Exception as e:
-            st.error(
-                "❌ Gemini AI is temporarily unavailable. "
-                "Please try again in a few minutes."
-            )
+
+            st.error("❌ Gemini API Error")
+
+            st.exception(e)
 
         st.warning(
             "⚠️ This information is for general educational purposes. "
-            "Do not use it as a substitute for advice from a doctor or pharmacist."
+            "Do not use it as a substitute for advice from a doctor or pharmacist. "
+            "Always verify medicine information with a qualified healthcare professional."
         )
+
