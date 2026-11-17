@@ -1,3 +1,4 @@
+
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -50,7 +51,7 @@ User's question:
         try:
             with st.spinner("🔍 Analyzing medicine..."):
                 response = client.models.generate_content(
-                    model="gemini-3.6-flash",
+                    model="gemini-3.8-flash",
                     contents=[
                         types.Part.from_bytes(
                             data=image_bytes,
@@ -71,9 +72,9 @@ User's question:
 
         except Exception as e:
             st.error(
-                "❌ Something went wrong while analyzing the image."
+                "❌ Gemini AI is temporarily unavailable. "
+                "Please try again in a few minutes."
             )
-            st.exception(e)
 
         st.warning(
             "⚠️ This information is for general educational purposes. "
