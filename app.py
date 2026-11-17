@@ -1,5 +1,6 @@
 
 import streamlit as st
+import time
 from google import genai
 from google.genai import types
 from prompts import SYSTEM_PROMPT
@@ -59,53 +60,100 @@ The user's selected language is: {language}
 User's question:
 {question if question else "Identify this medicine and explain its common uses and important safety information."}
 
-Important:
+Instructions:
 - Explain the medicine in simple language.
 - Mention common uses and important precautions.
 - Do not guess the medicine identity if the image is unclear.
-- Explain that the information is educational, not a medical prescription.
 - Respond in the selected language.
+- Do not provide personalized prescriptions or dosages.
 """
 
         try:
 
+            response = None
+
+            # Retry mechanism for temporary server errors
             with st.spinner("🔍 Analyzing medicine..."):
 
-                response = client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=[
-                        types.Part.from_bytes(
-                            data=image_bytes,
-                            mime_type=uploaded_file.type
-                        ),
-                        prompt
-                    ]
-                )
+                for attempt in range(3):
 
-            if response.text:
+                    try:
+
+                        response = client.models.generate_content(
+                            model="gemini-3.8-flash",
+                            contents=[
+                                types.Part.from_bytes(
+                                    data=image_bytes,
+                                    mime_type=uploaded_file.type
+                                ),
+                                prompt
+                            ]
+                        )
+
+                        break
+
+                    except Exception as e:
+
+                        error_code = getattr(e, "code", None)
+
+                        if error_code == 503 and attempt < 2:
+
+                            wait_time = 3 * (2 ** attempt)
+
+                            st.warning(
+                                f"Gemini server is busy. "
+                                f"Retrying in {wait_time} seconds..."
+                            )
+
+                            time.sleep(wait_time)
+
+                        else:
+                            raise
+
+            if response and response.text:
 
                 st.success("✅ Analysis completed!")
 
                 st.subheader("💊 Medicine Information")
 
-                st.write(response.text)
+                st.markdown(response.text)
 
             else:
 
                 st.warning(
                     "⚠️ I couldn't identify the medicine from this image. "
-                    "Please upload a clearer image showing the medicine name."
+                    "Please upload a clearer image."
                 )
 
         except Exception as e:
 
-            st.error("❌ Gemini API Error")
+            error_code = getattr(e, "code", None)
 
-            st.exception(e)
+            if error_code == 503:
 
-        st.warning(
-            "⚠️ This information is for general educational purposes. "
-            "Do not use it as a substitute for advice from a doctor or pharmacist. "
-            "Always verify medicine information with a qualified healthcare professional."
-        )
+                st.error(
+                    "❌ Google's Gemini service is currently overloaded. "
+                    "Please try again later."
+                )
 
+            elif error_code == 429:
+
+                st.error(
+                    "❌ Gemini API request limit reached. "
+                    "Please check your API quota and try again later."
+                )
+
+            else:
+
+                st.error("❌ An error occurred during medicine analysis.")
+
+                st.exception(e)
+
+        finally:
+
+            st.warning(
+                "⚠️ This information is for general educational purposes. "
+                "Do not use it as a substitute for advice from a doctor "
+                "or pharmacist. Always verify medicine information "
+                "with a qualified healthcare professional."
+            )
